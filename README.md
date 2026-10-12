@@ -6,6 +6,8 @@ A lightweight macOS menu bar app for:
 - switching the output device,
 - a separate effect chain for each output device.
 
+![alt text](image.png)
+
 ## Features
 
 - **Per-app volume and mute.** Apps are grouped under the app responsible for them, so Safari's and Chrome's helper processes count as one app. Levels are remembered across launches.
