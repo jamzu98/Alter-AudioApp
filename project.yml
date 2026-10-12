@@ -1,0 +1,76 @@
+name: Alter
+options:
+    bundleIdPrefix: com.alter
+    deploymentTarget:
+        macOS: "15.0"
+    createIntermediateGroups: true
+settings:
+    base:
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: W3JP6JQN3M
+    configs:
+        # The DSP runs on the real-time audio thread; unoptimized Swift there is far too slow
+        # (generic iterators, runtime metadata lookups), so Debug builds are optimized too.
+        Debug:
+            SWIFT_OPTIMIZATION_LEVEL: "-O"
+targets:
+    Alter:
+        type: application
+        platform: macOS
+        sources:
+            - path: Alter
+        info:
+            path: Alter/Info.plist
+            properties:
+                CFBundleDisplayName: Alter
+                CFBundleShortVersionString: "0.1.0"
+                CFBundleVersion: "1"
+                LSUIElement: true
+                LSApplicationCategoryType: public.app-category.music
+                NSAudioCaptureUsageDescription: Alter processes the audio of each app to control its volume and apply the effects of your output device.
+                NSHumanReadableCopyright: ""
+        entitlements:
+            path: Alter/Alter.entitlements
+            properties:
+                com.apple.security.app-sandbox: false
+                com.apple.security.device.audio-input: true
+        settings:
+            base:
+                PRODUCT_BUNDLE_IDENTIFIER: com.alter.Alter
+                GENERATE_INFOPLIST_FILE: false
+            configs:
+                # Ad-hoc signed test bundles fail library validation under the hardened runtime.
+                Debug:
+                    ENABLE_HARDENED_RUNTIME: false
+                Release:
+                    ENABLE_HARDENED_RUNTIME: true
+    AlterTests:
+        type: bundle.unit-test
+        platform: macOS
+        sources:
+            - path: AlterTests
+              excludes:
+                  - Fixtures
+            - path: AlterTests/Fixtures
+              buildPhase: resources
+              type: folder
+        dependencies:
+            - target: Alter
+        settings:
+            base:
+                BUNDLE_LOADER: "$(TEST_HOST)"
+                TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Alter.app/Contents/MacOS/Alter"
+                GENERATE_INFOPLIST_FILE: true
+schemes:
+    Alter:
+        build:
+            targets:
+                Alter: all
+                AlterTests: [test]
+        test:
+            targets:
+                - AlterTests
