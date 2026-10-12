@@ -1,3 +1,4 @@
+import CoreAudio
 import XCTest
 @testable import Alter
 
@@ -243,5 +244,15 @@ final class SampleRateTests: XCTestCase {
         p.sampleRate = 96_000
         let back = try JSONDecoder().decode(DeviceProfile.self, from: JSONEncoder().encode(p))
         XCTAssertEqual(back.sampleRate, 96_000)
+    }
+
+    func testIOBufferKeepsAboutTheSameDuration() {
+        XCTAssertEqual(TapSession.ioBufferFrames(sampleRate: 44_100, range: nil), 128)
+        XCTAssertEqual(TapSession.ioBufferFrames(sampleRate: 48_000, range: nil), 128)
+        XCTAssertEqual(TapSession.ioBufferFrames(sampleRate: 96_000, range: nil), 256)
+        XCTAssertEqual(TapSession.ioBufferFrames(sampleRate: 192_000, range: nil), 512)
+        // Devices that cannot go that low keep their smallest buffer.
+        let range = AudioValueRange(mMinimum: 512, mMaximum: 4096)
+        XCTAssertEqual(TapSession.ioBufferFrames(sampleRate: 48_000, range: range), 512)
     }
 }

@@ -99,6 +99,18 @@ final class TapRenderer: @unchecked Sendable {
 ///
 /// Not thread-safe: used only on the engine worker queue.
 final class TapSession {
+    /// Target IO buffer length of the aggregate. The path adds about two buffers of latency, so
+    /// the 512-frame default costs ~25 ms; ~2.7 ms buffers bring that to ~9 ms. Measured CPU use
+    /// (Alter and coreaudiod) does not go up.
+    static let ioBufferDuration = 128.0 / 48_000
+
+    /// Power-of-two frame count closest to `ioBufferDuration` at `sampleRate`, within `range`.
+    static func ioBufferFrames(sampleRate: Double, range: AudioValueRange?) -> UInt32 {
+        var frames = Double(1 << Int(log2(max(1, sampleRate * ioBufferDuration)).rounded()))
+        if let range { frames = min(max(frames, range.mMinimum), range.mMaximum) }
+        return UInt32(frames)
+    }
+
     let key: String
     let renderer: TapRenderer
     private(set) var processObjects: [AudioObjectID]
@@ -168,6 +180,7 @@ final class TapSession {
         try check(AudioHardwareCreateAggregateDevice(dict as CFDictionary, &aggregate), "Create aggregate device")
         aggregateID = aggregate
         deviceUID = device.uid
+        setIOBufferSize()
 
         let renderer = self.renderer
         var procID: AudioDeviceIOProcID?
@@ -180,6 +193,19 @@ final class TapSession {
         }
         ioProcID = procID
         if wasRunning { start() }
+    }
+
+    /// Best effort: on failure the aggregate keeps its default buffer and only latency suffers.
+    private func setIOBufferSize() {
+        let rate = aggregateID.nominalSampleRate
+        guard rate > 0 else { return }
+        let range = try? aggregateID.read(.init(kAudioDevicePropertyBufferFrameSizeRange), default: AudioValueRange())
+        let frames = Self.ioBufferFrames(sampleRate: rate, range: range)
+        do {
+            try aggregateID.write(.init(kAudioDevicePropertyBufferFrameSize), frames)
+        } catch {
+            NSLog("Alter: could not set IO buffer to \(frames) frames: \(error)")
+        }
     }
 
     func detach() {

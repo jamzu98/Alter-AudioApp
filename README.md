@@ -44,6 +44,7 @@ The aggregate's IOProc applies the app's volume and the active device's effect c
 Some properties of this design:
 
 - **Low overhead.** Alter only intercepts an app when it changes something: a volume other than 100%, mute, or effects on the current device. Everything else goes straight to the hardware. Idle sessions stop after 4 seconds.
+- **Low latency.** An intercepted app plays about 9 ms later than it would directly (11 ms with the limiter's 1.5 ms lookahead). Most of that is two IO buffers of ~2.7 ms each (128 frames at 48 kHz). Devices whose minimum buffer is larger use that minimum instead.
 - **Safe on crash.** If Alter quits or crashes, the system destroys its taps and every app plays directly again.
 - **Real-time safe.** The audio thread does not allocate or lock. Effect parameters are published as immutable `ChainState` objects through an atomic pointer.
 
